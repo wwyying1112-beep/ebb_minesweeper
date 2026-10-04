@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>ebb扫雷之噩梦开始</title>
     <style>
         body {
@@ -11,7 +11,8 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
+            touch-action: manipulation;
         }
         .header-bar {
             display: flex;
@@ -36,11 +37,14 @@
             font-size: 0.9rem;
         }
         .controls {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 6px;
         }
         button {
-            padding: 8px 16px;
-            margin: 0 4px;
+            padding: 8px 14px;
             background-color: #2c2c2c;
             color: white;
             border: 1px solid #555;
@@ -48,16 +52,26 @@
             cursor: pointer;
             font-weight: bold;
             transition: 0.2s;
+            font-size: 0.95rem;
         }
         button:hover {
             background-color: #ffffff;
             color: #3855a7;
         }
+        /* 手機模式切換按鈕專用樣式 */
+        #btn-mode {
+            background-color: #1a2640;
+            border: 2px solid #5879b5;
+        }
+        #btn-mode.flag-mode {
+            background-color: #b33939;
+            border-color: #ff5252;
+        }
         #status {
-            font-size: 1.2rem;
-            margin-bottom: 15px;
+            font-size: 1.1rem;
+            margin-bottom: 12px;
             font-weight: bold;
-            min-height: 30px;
+            min-height: 28px;
             color: #ffffff;
         }
         canvas {
@@ -66,9 +80,10 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.3);
             border-radius: 8px;
             cursor: pointer;
+            max-width: 100%;
+            height: auto;
+            touch-action: none;
         }
-        
-        /* 右下角點擊/訪問人數計數器樣式 */
         .visitor-counter {
             position: fixed;
             bottom: 15px;
@@ -109,19 +124,19 @@
         <button id="btn-hard">困难</button>
         <button id="btn-hell">地狱</button>
         <button id="btn-restart">重新开始</button>
+        <!-- 手機模式切換按鈕 -->
+        <button id="btn-mode">⛏️ 挖掘模式</button>
     </div>
     
     <div id="status">请选择难度开始游戏</div>
     <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    <!-- 右下角點擊/造訪人數 -->
     <div class="visitor-counter">
         <span id="counterLabel">👀 访问人数:</span>
         <img src="https://hits.sh/ebb-minesweeper-nightmare.hits.svg?style=flat-square&label=Hits&color=3855a7&labelColor=1a2640" alt="Hits Counter">
     </div>
 
     <script>
-        // 多語言文本配置
         const I18N = {
             "zh-CN": {
                 title: "ebb扫雷之噩梦开始",
@@ -133,7 +148,9 @@
                 playing: "游戏进行中 | 🚩 剩余地雷: {mines}",
                 win: "🎉 恭喜获胜！你成功清除了所有地雷！",
                 lose: "💥 踩到地雷了！游戏结束！",
-                counter: "👀 访问人数:"
+                counter: "👀 访问人数:",
+                modeDig: "⛏️ 挖掘模式",
+                modeFlag: "🚩 插旗模式"
             },
             "zh-TW": {
                 title: "ebb踩地雷之惡夢開始",
@@ -145,7 +162,9 @@
                 playing: "遊戲進行中 | 🚩 剩餘地雷: {mines}",
                 win: "🎉 恭喜獲勝！你成功清除了所有地雷！",
                 lose: "💥 踩到地雷了！遊戲結束！",
-                counter: "👀 訪問人數:"
+                counter: "👀 訪問人數:",
+                modeDig: "⛏️ 挖掘模式",
+                modeFlag: "🚩 插旗模式"
             },
             "en": {
                 title: "ebb Minesweeper: Nightmare Begins",
@@ -157,7 +176,9 @@
                 playing: "Playing | 🚩 Mines left: {mines}",
                 win: "🎉 Victory! You swept all the mines!",
                 lose: "💥 Game Over! You hit a mine!",
-                counter: "👀 Visits:"
+                counter: "👀 Visits:",
+                modeDig: "⛏️️ Dig Mode",
+                modeFlag: "🚩 Flag Mode"
             }
         };
 
@@ -166,8 +187,10 @@
             const ctx = canvas.getContext("2d");
             const statusDiv = document.getElementById("status");
             const langSelect = document.getElementById("langSelect");
+            const btnMode = document.getElementById("btn-mode");
 
             let currentLang = "zh-CN";
+            let isFlagMode = false; // 是否處於插旗模式
 
             const DIFFICULTIES = {
                 "easy": { rows: 8, cols: 8, mines: 10, radius: 25 },
@@ -193,6 +216,7 @@
                 document.getElementById("btn-hell").innerText = lang.hell;
                 document.getElementById("btn-restart").innerText = lang.restart;
                 document.getElementById("counterLabel").innerText = lang.counter;
+                btnMode.innerText = isFlagMode ? lang.modeFlag : lang.modeDig;
                 updateStatus();
             }
 
@@ -386,12 +410,24 @@
                 checkWinCondition();
             }
 
-            canvas.addEventListener("mousedown", function(event) {
-                if (gameOver) return;
+            function toggleFlag(r, c) {
+                let key = `${r},${c}`;
+                let cell = grid[key];
+                if (!cell || cell.revealed) return;
 
+                cell.flagged = !cell.flagged;
+                flaggedCount += cell.flagged ? 1 : -1;
+                updateStatus();
+                drawBoard();
+            }
+
+            function getCellAtPos(clientX, clientY) {
                 const rect = canvas.getBoundingClientRect();
-                const clickX = event.clientX - rect.left;
-                const clickY = event.clientY - rect.top;
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+
+                const clickX = (clientX - rect.left) * scaleX;
+                const clickY = (clientY - rect.top) * scaleY;
 
                 let closestKey = null;
                 let minDist = Infinity;
@@ -405,38 +441,139 @@
                         closestKey = key;
                     }
                 }
+                return closestKey ? grid[closestKey] : null;
+            }
 
-                if (closestKey) {
-                    let cell = grid[closestKey];
-                    if (event.button === 0) {
+            // 滑鼠點擊（電腦端）
+            canvas.addEventListener("mousedown", function(event) {
+                if (gameOver) return;
+                let cell = getCellAtPos(event.clientX, event.clientY);
+                if (!cell) return;
+
+                if (event.button === 0) { // 左鍵
+                    if (isFlagMode) {
+                        toggleFlag(cell.r, cell.c);
+                    } else {
                         revealCell(cell.r, cell.c);
-                    } else if (event.button === 2) {
-                        if (!cell.revealed) {
-                            cell.flagged = !cell.flagged;
-                            flaggedCount += cell.flagged ? 1 : -1;
-                            updateStatus();
+                    }
+                } else if (event.button === 2) { // 右鍵
+                    toggleFlag(cell.r, cell.c);
+                }
+                drawBoard();
+            });
+
+            // 手機觸控事件（支援長按插旗）
+            let touchTimer = null;
+            let touchMoved = false;
+
+            canvas.addEventListener("touchstart", function(e) {
+                if (gameOver || e.touches.length > 1) return;
+                touchMoved = false;
+                const touch = e.touches[0];
+                const cell = getCellAtPos(touch.clientX, touch.clientY);
+
+                if (cell) {
+                    // 設定長按計時器（400毫秒）
+                    touchTimer = setTimeout(() => {
+                        if (!touchMoved) {
+                            toggleFlag(cell.r, cell.c);
+                            touchTimer = null;
+                        }
+                    }, 400);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener("touchmove", function() {
+                touchMoved = true;
+                if (touchTimer) {
+                    clearTimeout(touchTimer);
+                    touchTimer = null;
+                }
+            });
+
+            canvas.addEventListener("touchend", function(e) {
+                if (gameOver) return;
+                if (touchTimer) {
+                    clearTimeout(touchTimer);
+                    touchTimer = null;
+                    if (!touchMoved) {
+                        const touch = e.changedTouches[0];
+                        const cell = getCellAtPos(touch.clientX, touch.clientY);
+                        if (cell) {
+                            if (isFlagMode) {
+                                toggleFlag(cell.r, cell.c);
+                            } else {
+                                revealCell(cell.r, cell.c);
+                            }
+                            drawBoard();
                         }
                     }
-                    drawBoard();
                 }
             });
 
             canvas.addEventListener("contextmenu", e => e.preventDefault());
 
+            // 切換模式按鈕
+            btnMode.onclick = () => {
+                isFlagMode = !isFlagMode;
+                btnMode.classList.toggle("flag-mode", isFlagMode);
+                updateLanguage();
+            };
+
             document.getElementById("btn-easy").onclick = () => startGame("easy");
             document.getElementById("btn-medium").onclick = () => startGame("medium");
-            document.getElementById("btn-hard").onclick = () => startGame("hard");
-            document.getElementById("btn-hell").onclick = () => startGame("hell");
-            document.getElementById("btn-restart").onclick = () => startGame(currentDifficulty);
+            document.getElementById("btn-hard").onclick = () => startGame("在手機或觸控螢幕裝置上，因為沒有滑鼠「右鍵」，通常有兩種最常見的解決方案：
 
-            langSelect.addEventListener("change", (e) => {
-                currentLang = e.target.value;
-                updateLanguage();
-            });
+---
 
-            updateLanguage();
-            startGame("easy");
-        });
-    </script>
-</body>
-</html>
+### 方案一：新增「長按（Long Press）」插旗功能（最推薦、操作最直覺）
+在手機上，使用者習慣用**「長按 300 毫秒以上」**來替代滑鼠右鍵選單。
+
+你可以利用 JavaScript 的 `touchstart` 與 `touchend` 事件來偵測長按動作。
+
+#### 🛠️ 修改方式：
+請在 `index.html` 的 `<script>` 裡面，找到 `canvas.addEventListener("mousedown", ...)` 那一段，並在下方**新增以下觸控長按程式碼**：
+
+```javascript
+// --- 手機端觸控事件處理 ---
+let touchTimer = null;
+let isLongPress = false;
+
+canvas.addEventListener("touchstart", function(event) {
+    if (gameOver) return;
+    event.preventDefault(); // 防止手機畫面滑動與放大
+
+    const touch = event.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const clickX = touch.clientX - rect.left;
+    const clickY = touch.clientY - rect.top;
+
+    isLongPress = false;
+
+    // 設定長按計時器（300毫秒）
+    touchTimer = setTimeout(() => {
+        isLongPress = true;
+        // 長按觸發：插旗或取消旗子
+        handleHexInteract(clickX, clickY, "right");
+    }, 300);
+}, { passive: false });
+
+canvas.addEventListener("touchend", function(event) {
+    if (gameOver) return;
+    event.preventDefault();
+
+    // 如果未達到長按時間，代表是「短按（翻開格子）」
+    if (!isLongPress) {
+        clearTimeout(touchTimer);
+        const touch = event.changedTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        const clickX = touch.clientX - rect.left;
+        const clickY = touch.clientY - rect.top;
+        handleHexInteract(clickX, clickY, "left");
+    }
+}, { passive: false });
+
+canvas.addEventListener("touchmove", function(event) {
+    // 手指移動時取消長按判定
+    clearTimeout(touchTimer);
+});
