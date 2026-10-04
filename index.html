@@ -1,137 +1,1805 @@
 <!DOCTYPE html>
+
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ebb扫雷之噩梦开始</title>
-    <style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+```
+<title>ebb扫雷之噩梦开始</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        background-color: #3855a7;
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+        overflow-x: hidden;
+    }
+
+    .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        width: 100%;
+        max-width: 800px;
+
+        margin: 0 auto 10px auto;
+    }
+
+    h1 {
+        margin: 0;
+        color: #ffffff;
+        font-size: 1.8rem;
+        font-weight: bold;
+    }
+
+    .lang-select {
+        padding: 5px 10px;
+        background-color: #2c2c2c;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+
+    .controls {
+        margin-bottom: 15px;
+    }
+
+    button {
+        padding: 8px 16px;
+        margin: 4px;
+        background-color: #2c2c2c;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+
+    button:hover {
+        background-color: #ffffff;
+        color: #3855a7;
+    }
+
+    #status {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+        font-weight: bold;
+        min-height: 30px;
+        color: #ffffff;
+    }
+
+    /* Canvas 外層 */
+    .canvas-wrapper {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        overflow: hidden;
+    }
+
+    canvas {
+        background-color: #1a2640;
+        border: 2px solid #5879b5;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+
+        cursor: pointer;
+
+        /*
+         * 手機觸控的重要設定
+         *
+         * 防止瀏覽器把 Canvas 的觸控
+         * 解讀成滑動、縮放等操作。
+         */
+        touch-action: none;
+
+        user-select: none;
+        -webkit-user-select: none;
+
+        /*
+         * 讓 Canvas 在手機上縮小顯示，
+         * 但不改變遊戲內部座標系統。
+         */
+        width: min(800px, 100%);
+        height: auto;
+    }
+
+    /* 右下角訪問人數 */
+    .visitor-counter {
+        position: fixed;
+
+        bottom: 15px;
+        right: 15px;
+
+        background-color: rgba(28, 43, 66, 0.9);
+
+        border: 1px solid #5879b5;
+        border-radius: 8px;
+
+        padding: 6px 12px;
+
+        font-size: 0.85rem;
+
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+
+        display: flex;
+        align-items: center;
+
+        gap: 8px;
+
+        z-index: 999;
+    }
+
+    .visitor-counter img {
+        height: 20px;
+        vertical-align: middle;
+    }
+
+
+    /* ==========================
+       手機版
+       ========================== */
+
+    @media (max-width: 600px) {
+
         body {
-            background-color: #3855a7;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 15px;
-            touch-action: manipulation;
+            padding: 10px;
         }
+
         .header-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 800px;
-            margin: 0 auto 10px auto;
+            flex-direction: column;
+            gap: 10px;
         }
+
         h1 {
-            margin: 0;
-            color: #ffffff;
-            font-size: 1.8rem;
-            font-weight: bold;
+            font-size: 1.4rem;
         }
-        .lang-select {
-            padding: 5px 10px;
-            background-color: #2c2c2c;
-            color: #fff;
-            border: 1px solid #555;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
+
         .controls {
-            margin-bottom: 12px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 6px;
         }
+
         button {
-            padding: 8px 14px;
-            background-color: #2c2c2c;
-            color: white;
-            border: 1px solid #555;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-            font-size: 0.95rem;
-        }
-        button:hover {
-            background-color: #ffffff;
-            color: #3855a7;
-        }
-        /* 手機模式切換按鈕專用樣式 */
-        #btn-mode {
-            background-color: #1a2640;
-            border: 2px solid #5879b5;
-        }
-        #btn-mode.flag-mode {
-            background-color: #b33939;
-            border-color: #ff5252;
-        }
-        #status {
-            font-size: 1.1rem;
-            margin-bottom: 12px;
-            font-weight: bold;
-            min-height: 28px;
-            color: #ffffff;
-        }
-        canvas {
-            background-color: #1a2640;
-            border: 2px solid #5879b5;
-            box-shadow: 0 0 20px rgba(0,0,0,0.3);
-            border-radius: 8px;
-            cursor: pointer;
-            max-width: 100%;
-            height: auto;
-            touch-action: none;
-        }
-        .visitor-counter {
-            position: fixed;
-            bottom: 15px;
-            right: 15px;
-            background-color: rgba(28, 43, 66, 0.9);
-            border: 1px solid #5879b5;
-            border-radius: 8px;
-            padding: 6px 12px;
+            padding: 7px 11px;
             font-size: 0.85rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            z-index: 999;
         }
+
+        #status {
+            font-size: 1rem;
+        }
+
+        .visitor-counter {
+            bottom: 8px;
+            right: 8px;
+            font-size: 0.75rem;
+            padding: 5px 8px;
+        }
+
         .visitor-counter img {
-            height: 20px;
-            vertical-align: middle;
+            height: 17px;
         }
-    </style>
+    }
+</style>
+```
+
 </head>
+
 <body>
 
-    <div class="header-bar">
-        <h1 id="title">ebb扫雷之噩梦开始</h1>
-        <div>
-            <select id="langSelect" class="lang-select">
-                <option value="zh-CN" selected>简体中文</option>
-                <option value="zh-TW">繁體中文</option>
-                <option value="en">English</option>
-            </select>
-        </div>
+```
+<div class="header-bar">
+
+    <h1 id="title">
+        ebb扫雷之噩梦开始
+    </h1>
+
+    <div>
+        <select id="langSelect" class="lang-select">
+
+            <option value="zh-CN" selected>
+                简体中文
+            </option>
+
+            <option value="zh-TW">
+                繁體中文
+            </option>
+
+            <option value="en">
+                English
+            </option>
+
+        </select>
     </div>
 
-    <div class="controls">
-        <button id="btn-easy">简单</button>
-        <button id="btn-medium">普通</button>
-        <button id="btn-hard">困难</button>
-        <button id="btn-hell">地狱</button>
-        <button id="btn-restart">重新开始</button>
-        <!-- 手機切換按鈕 -->
-        <button id="btn-mode">⛏️ 挖掘模式</button>
-    </div>
-    
-    <div id="status">请选择难度开始游戏</div>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+</div>
 
-    <div class="visitor-counter">
-        <span id="counterLabel">👀 访问人数:</span>
-        <img src="https://hits.sh/ebb-minesweeper-nightmare.hits.svg?style=flat-square&label=Hits&color=3855a7&labelColor=1a2640" alt="Hits Counter">
-    
+
+<div class="controls">
+
+    <button id="btn-easy">
+        简单
+    </button>
+
+    <button id="btn-medium">
+        普通
+    </button>
+
+    <button id="btn-hard">
+        困难
+    </button>
+
+    <button id="btn-hell">
+        地狱
+    </button>
+
+    <button id="btn-restart">
+        重新开始
+    </button>
+
+</div>
+
+
+<div id="status">
+    请选择难度开始游戏
+</div>
+
+
+<div class="canvas-wrapper">
+
+    <canvas
+        id="gameCanvas"
+        width="800"
+        height="600">
+    </canvas>
+
+</div>
+
+
+<!-- 右下角訪問人數 -->
+
+<div class="visitor-counter">
+
+    <span id="counterLabel">
+        👀 访问人数:
+    </span>
+
+    <img
+        src="https://hits.sh/ebb-minesweeper-nightmare.hits.svg?style=flat-square&label=Hits&color=3855a7&labelColor=1a2640"
+        alt="Hits Counter">
+
+</div>
+
+
+
+<script>
+
+    /* ==========================================
+       多語言
+       ========================================== */
+
+    const I18N = {
+
+        "zh-CN": {
+
+            title: "ebb扫雷之噩梦开始",
+
+            easy: "简单",
+
+            medium: "普通",
+
+            hard: "困难",
+
+            hell: "地狱",
+
+            restart: "重新开始",
+
+            playing:
+                "游戏进行中 | 🚩 剩余地雷: {mines}",
+
+            win:
+                "🎉 恭喜获胜！你成功清除了所有地雷！",
+
+            lose:
+                "💥 踩到地雷了！游戏结束！",
+
+            counter:
+                "👀 访问人数:"
+
+        },
+
+
+        "zh-TW": {
+
+            title: "ebb踩地雷之惡夢開始",
+
+            easy: "簡單",
+
+            medium: "普通",
+
+            hard: "困難",
+
+            hell: "地獄",
+
+            restart: "重新開始",
+
+            playing:
+                "遊戲進行中 | 🚩 剩餘地雷: {mines}",
+
+            win:
+                "🎉 恭喜獲勝！你成功清除了所有地雷！",
+
+            lose:
+                "💥 踩到地雷了！遊戲結束！",
+
+            counter:
+                "👀 訪問人數:"
+
+        },
+
+
+        "en": {
+
+            title:
+                "ebb Minesweeper: Nightmare Begins",
+
+            easy:
+                "Easy",
+
+            medium:
+                "Medium",
+
+            hard:
+                "Hard",
+
+            hell:
+                "Hell",
+
+            restart:
+                "Restart",
+
+            playing:
+                "Playing | 🚩 Mines left: {mines}",
+
+            win:
+                "🎉 Victory! You swept all the mines!",
+
+            lose:
+                "💥 Game Over! You hit a mine!",
+
+            counter:
+                "👀 Visits:"
+
+        }
+
+    };
+
+
+
+    /* ==========================================
+       DOM 載入
+       ========================================== */
+
+    window.addEventListener(
+        "DOMContentLoaded",
+        () => {
+
+
+            const canvas =
+                document.getElementById("gameCanvas");
+
+            const ctx =
+                canvas.getContext("2d");
+
+            const statusDiv =
+                document.getElementById("status");
+
+            const langSelect =
+                document.getElementById("langSelect");
+
+
+            let currentLang = "zh-CN";
+
+
+            /* ==========================================
+               難度設定
+               ========================================== */
+
+            const DIFFICULTIES = {
+
+                easy: {
+                    rows: 8,
+                    cols: 8,
+                    mines: 10,
+                    radius: 25
+                },
+
+                medium: {
+                    rows: 12,
+                    cols: 12,
+                    mines: 30,
+                    radius: 20
+                },
+
+                hard: {
+                    rows: 16,
+                    cols: 16,
+                    mines: 50,
+                    radius: 16
+                },
+
+                hell: {
+                    rows: 20,
+                    cols: 20,
+                    mines: 100,
+                    radius: 13
+                }
+
+            };
+
+
+            let currentDifficulty = "easy";
+
+            let rows;
+
+            let cols;
+
+            let minesCount;
+
+            let hexRadius;
+
+            let grid = {};
+
+            let gameOver = false;
+
+            let gameWon = false;
+
+            let flaggedCount = 0;
+
+
+
+            /* ==========================================
+               語言
+               ========================================== */
+
+            function updateLanguage() {
+
+                const lang =
+                    I18N[currentLang];
+
+
+                document.getElementById("title")
+                    .innerText = lang.title;
+
+
+                document.title =
+                    lang.title;
+
+
+                document.getElementById("btn-easy")
+                    .innerText = lang.easy;
+
+
+                document.getElementById("btn-medium")
+                    .innerText = lang.medium;
+
+
+                document.getElementById("btn-hard")
+                    .innerText = lang.hard;
+
+
+                document.getElementById("btn-hell")
+                    .innerText = lang.hell;
+
+
+                document.getElementById("btn-restart")
+                    .innerText = lang.restart;
+
+
+                document.getElementById("counterLabel")
+                    .innerText = lang.counter;
+
+
+                updateStatus();
+
+            }
+
+
+
+            /* ==========================================
+               狀態文字
+               ========================================== */
+
+            function updateStatus() {
+
+                const lang =
+                    I18N[currentLang];
+
+
+                if (gameWon) {
+
+                    statusDiv.innerText =
+                        lang.win;
+
+                }
+
+                else if (gameOver) {
+
+                    statusDiv.innerText =
+                        lang.lose;
+
+                }
+
+                else {
+
+                    let remainingMines =
+                        minesCount - flaggedCount;
+
+
+                    statusDiv.innerText =
+                        lang.playing.replace(
+                            "{mines}",
+                            remainingMines
+                        );
+
+                }
+
+            }
+
+
+
+            /* ==========================================
+               六角形鄰居
+               ========================================== */
+
+            function getNeighbors(r, c) {
+
+                const directions =
+                    (r % 2 === 0)
+
+                    ?
+
+                    [
+                        [-1, -1],
+                        [-1, 0],
+                        [0, -1],
+                        [0, 1],
+                        [1, -1],
+                        [1, 0]
+                    ]
+
+                    :
+
+                    [
+                        [-1, 0],
+                        [-1, 1],
+                        [0, -1],
+                        [0, 1],
+                        [1, 0],
+                        [1, 1]
+                    ];
+
+
+                const neighbors = [];
+
+
+                for (let [dr, dc] of directions) {
+
+                    let nr = r + dr;
+
+                    let nc = c + dc;
+
+
+                    if (
+                        nr >= 0 &&
+                        nr < rows &&
+                        nc >= 0 &&
+                        nc < cols
+                    ) {
+
+                        neighbors.push(
+                            `${nr},${nc}`
+                        );
+
+                    }
+
+                }
+
+
+                return neighbors;
+
+            }
+
+
+
+            /* ==========================================
+               開始遊戲
+               ========================================== */
+
+            function startGame(difficultyKey) {
+
+                currentDifficulty =
+                    difficultyKey;
+
+
+                const config =
+                    DIFFICULTIES[difficultyKey];
+
+
+                rows =
+                    config.rows;
+
+
+                cols =
+                    config.cols;
+
+
+                minesCount =
+                    config.mines;
+
+
+                hexRadius =
+                    config.radius;
+
+
+                gameOver = false;
+
+                gameWon = false;
+
+                flaggedCount = 0;
+
+
+                grid = {};
+
+
+
+                /* 建立棋盤 */
+
+                for (
+                    let r = 0;
+                    r < rows;
+                    r++
+                ) {
+
+                    for (
+                        let c = 0;
+                        c < cols;
+                        c++
+                    ) {
+
+                        grid[`${r},${c}`] = {
+
+                            r: r,
+
+                            c: c,
+
+                            isMine: false,
+
+                            revealed: false,
+
+                            flagged: false,
+
+                            count: 0
+
+                        };
+
+                    }
+
+                }
+
+
+
+                /* ==========================================
+                   隨機放置地雷
+                   ========================================== */
+
+                const keys =
+                    Object.keys(grid);
+
+
+                let placedMines = 0;
+
+
+                while (
+                    placedMines < minesCount
+                ) {
+
+                    let randKey =
+                        keys[
+                            Math.floor(
+                                Math.random() *
+                                keys.length
+                            )
+                        ];
+
+
+                    if (
+                        !grid[randKey].isMine
+                    ) {
+
+                        grid[randKey].isMine =
+                            true;
+
+                        placedMines++;
+
+                    }
+
+                }
+
+
+
+                /* ==========================================
+                   計算附近地雷數
+                   ========================================== */
+
+                for (
+                    let key in grid
+                ) {
+
+                    let cell =
+                        grid[key];
+
+
+                    if (!cell.isMine) {
+
+                        let neighbors =
+                            getNeighbors(
+                                cell.r,
+                                cell.c
+                            );
+
+
+                        cell.count =
+                            neighbors.reduce(
+                                (
+                                    acc,
+                                    nKey
+                                ) =>
+                                    acc +
+                                    (
+                                        grid[nKey]
+                                            .isMine
+                                            ? 1
+                                            : 0
+                                    ),
+                                0
+                            );
+
+                    }
+
+                }
+
+
+                updateStatus();
+
+                drawBoard();
+
+            }
+
+
+
+            /* ==========================================
+               六角形中心位置
+               ========================================== */
+
+            function getHexCenter(r, c) {
+
+                const xSpacing =
+                    hexRadius *
+                    Math.sqrt(3);
+
+
+                const ySpacing =
+                    hexRadius * 1.5;
+
+
+                const xOffset =
+                    60 +
+                    (
+                        r % 2 !== 0
+                            ? xSpacing / 2
+                            : 0
+                    );
+
+
+                const yOffset = 60;
+
+
+                const x =
+                    xOffset +
+                    c * xSpacing;
+
+
+                const y =
+                    yOffset +
+                    r * ySpacing;
+
+
+                return {
+                    x,
+                    y
+                };
+
+            }
+
+
+
+            /* ==========================================
+               畫六角形
+               ========================================== */
+
+            function drawHexagon(
+                x,
+                y,
+                radius,
+                fillColor,
+                strokeColor = "#223355"
+            ) {
+
+                ctx.beginPath();
+
+
+                for (
+                    let i = 0;
+                    i < 6;
+                    i++
+                ) {
+
+                    let angle =
+                        Math.PI / 180 *
+                        (
+                            60 * i +
+                            30
+                        );
+
+
+                    let hx =
+                        x +
+                        radius *
+                        Math.cos(angle);
+
+
+                    let hy =
+                        y +
+                        radius *
+                        Math.sin(angle);
+
+
+                    if (i === 0) {
+
+                        ctx.moveTo(
+                            hx,
+                            hy
+                        );
+
+                    }
+
+                    else {
+
+                        ctx.lineTo(
+                            hx,
+                            hy
+                        );
+
+                    }
+
+                }
+
+
+                ctx.closePath();
+
+
+                ctx.fillStyle =
+                    fillColor;
+
+
+                ctx.fill();
+
+
+                ctx.strokeStyle =
+                    strokeColor;
+
+
+                ctx.lineWidth = 1.5;
+
+
+                ctx.stroke();
+
+            }
+
+
+
+            /* ==========================================
+               畫棋盤
+               ========================================== */
+
+            function drawBoard() {
+
+                ctx.clearRect(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height
+                );
+
+
+                const numColors = [
+
+                    "",
+
+                    "#00ffff",
+
+                    "#00ff00",
+
+                    "#ffff00",
+
+                    "#ffaa00",
+
+                    "#ff00ff",
+
+                    "#ff5555"
+
+                ];
+
+
+
+                for (
+                    let key in grid
+                ) {
+
+                    let cell =
+                        grid[key];
+
+
+                    let {
+                        x,
+                        y
+                    } =
+                        getHexCenter(
+                            cell.r,
+                            cell.c
+                        );
+
+
+
+                    /* 已翻開 */
+
+                    if (cell.revealed) {
+
+
+                        /* 地雷 */
+
+                        if (cell.isMine) {
+
+                            drawHexagon(
+                                x,
+                                y,
+                                hexRadius,
+                                "#ff3333",
+                                "#990000"
+                            );
+
+
+                            ctx.fillStyle =
+                                "#000000";
+
+
+                            ctx.font =
+                                `bold ${
+                                    hexRadius * 0.9
+                                }px Arial`;
+
+
+                            ctx.textAlign =
+                                "center";
+
+
+                            ctx.textBaseline =
+                                "middle";
+
+
+                            ctx.fillText(
+                                "💣",
+                                x,
+                                y
+                            );
+
+                        }
+
+
+                        /* 普通格 */
+
+                        else {
+
+                            drawHexagon(
+                                x,
+                                y,
+                                hexRadius,
+                                "#1c2b42",
+                                "#2e4366"
+                            );
+
+
+                            if (
+                                cell.count > 0
+                            ) {
+
+                                ctx.fillStyle =
+                                    numColors[
+                                        Math.min(
+                                            cell.count,
+                                            6
+                                        )
+                                    ];
+
+
+                                ctx.font =
+                                    `bold ${
+                                        hexRadius *
+                                        0.9
+                                    }px Arial`;
+
+
+                                ctx.textAlign =
+                                    "center";
+
+
+                                ctx.textBaseline =
+                                    "middle";
+
+
+                                ctx.fillText(
+                                    cell.count,
+                                    x,
+                                    y
+                                );
+
+                            }
+
+                        }
+
+                    }
+
+
+                    /* 尚未翻開 */
+
+                    else {
+
+                        let fillColor =
+                            cell.flagged
+                                ? "#886600"
+                                : "#384F78";
+
+
+                        drawHexagon(
+                            x,
+                            y,
+                            hexRadius,
+                            fillColor,
+                            "#263859"
+                        );
+
+
+                        /* 旗幟 */
+
+                        if (
+                            cell.flagged
+                        ) {
+
+                            ctx.fillStyle =
+                                "#ffffff";
+
+
+                            ctx.font =
+                                `${
+                                    hexRadius *
+                                    0.8
+                                }px Arial`;
+
+
+                            ctx.textAlign =
+                                "center";
+
+
+                            ctx.textBaseline =
+                                "middle";
+
+
+                            ctx.fillText(
+                                "🚩",
+                                x,
+                                y
+                            );
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+
+
+            /* ==========================================
+               勝利判定
+               ========================================== */
+
+            function checkWinCondition() {
+
+                let totalSafeCells =
+                    (
+                        rows * cols
+                    ) -
+                    minesCount;
+
+
+                let revealedSafeCells =
+                    0;
+
+
+                for (
+                    let key in grid
+                ) {
+
+                    let cell =
+                        grid[key];
+
+
+                    if (
+                        !cell.isMine &&
+                        cell.revealed
+                    ) {
+
+                        revealedSafeCells++;
+
+                    }
+
+                }
+
+
+                if (
+                    revealedSafeCells ===
+                    totalSafeCells
+                ) {
+
+                    gameWon = true;
+
+                    gameOver = true;
+
+
+                    for (
+                        let key in grid
+                    ) {
+
+                        if (
+                            grid[key].isMine
+                        ) {
+
+                            grid[key].flagged =
+                                true;
+
+                        }
+
+                    }
+
+
+                    flaggedCount =
+                        minesCount;
+
+
+                    updateStatus();
+
+                    drawBoard();
+
+                }
+
+            }
+
+
+
+            /* ==========================================
+               翻開格子
+               ========================================== */
+
+            function revealCell(r, c) {
+
+                let key =
+                    `${r},${c}`;
+
+
+                if (
+                    !grid[key] ||
+                    grid[key].revealed ||
+                    grid[key].flagged
+                ) {
+
+                    return;
+
+                }
+
+
+                grid[key].revealed =
+                    true;
+
+
+
+                /* 踩到地雷 */
+
+                if (
+                    grid[key].isMine
+                ) {
+
+                    gameOver = true;
+
+
+                    updateStatus();
+
+
+                    for (
+                        let k in grid
+                    ) {
+
+                        if (
+                            grid[k].isMine
+                        ) {
+
+                            grid[k].revealed =
+                                true;
+
+                        }
+
+                    }
+
+
+                    drawBoard();
+
+                    return;
+
+                }
+
+
+
+                /* 沒有數字，自動展開 */
+
+                if (
+                    grid[key].count === 0
+                ) {
+
+                    let neighbors =
+                        getNeighbors(
+                            r,
+                            c
+                        );
+
+
+                    for (
+                        let nKey of neighbors
+                    ) {
+
+                        let [
+                            nr,
+                            nc
+                        ] =
+                            nKey
+                                .split(",")
+                                .map(Number);
+
+
+                        revealCell(
+                            nr,
+                            nc
+                        );
+
+                    }
+
+                }
+
+
+                checkWinCondition();
+
+            }
+
+
+
+            /* ==========================================
+               找出使用者點擊的六角形
+               ========================================== */
+
+            function getCellFromPosition(
+                clientX,
+                clientY
+            ) {
+
+                const rect =
+                    canvas.getBoundingClientRect();
+
+
+                /*
+                 * 重要：
+                 *
+                 * Canvas 在手機上可能被 CSS 縮小。
+                 *
+                 * 因此不能直接：
+                 *
+                 * clientX - rect.left
+                 *
+                 * 必須把畫面座標轉換回
+                 * Canvas 原始 800×600 座標。
+                 */
+
+                const scaleX =
+                    canvas.width /
+                    rect.width;
+
+
+                const scaleY =
+                    canvas.height /
+                    rect.height;
+
+
+                const clickX =
+                    (
+                        clientX -
+                        rect.left
+                    ) *
+                    scaleX;
+
+
+                const clickY =
+                    (
+                        clientY -
+                        rect.top
+                    ) *
+                    scaleY;
+
+
+                let closestKey =
+                    null;
+
+
+                let minDist =
+                    Infinity;
+
+
+                for (
+                    let key in grid
+                ) {
+
+                    let cell =
+                        grid[key];
+
+
+                    let {
+                        x,
+                        y
+                    } =
+                        getHexCenter(
+                            cell.r,
+                            cell.c
+                        );
+
+
+                    let dist =
+                        Math.hypot(
+                            clickX - x,
+                            clickY - y
+                        );
+
+
+                    if (
+                        dist <
+                        minDist &&
+                        dist <
+                        hexRadius
+                    ) {
+
+                        minDist =
+                            dist;
+
+
+                        closestKey =
+                            key;
+
+                    }
+
+                }
+
+
+                return closestKey;
+
+            }
+
+
+
+            /* ==========================================
+               插旗 / 取消旗幟
+               ========================================== */
+
+            function toggleFlag(cell) {
+
+                if (
+                    cell.revealed
+                ) {
+
+                    return;
+
+                }
+
+
+                cell.flagged =
+                    !cell.flagged;
+
+
+                flaggedCount +=
+                    cell.flagged
+                        ? 1
+                        : -1;
+
+
+                updateStatus();
+
+                drawBoard();
+
+            }
+
+
+
+            /* ==========================================
+               電腦：滑鼠操作
+               ========================================== */
+
+            canvas.addEventListener(
+                "mousedown",
+                function(event) {
+
+                    if (gameOver) {
+                        return;
+                    }
+
+
+                    const key =
+                        getCellFromPosition(
+                            event.clientX,
+                            event.clientY
+                        );
+
+
+                    if (!key) {
+                        return;
+                    }
+
+
+                    const cell =
+                        grid[key];
+
+
+
+                    /* 左鍵 */
+
+                    if (
+                        event.button === 0
+                    ) {
+
+                        revealCell(
+                            cell.r,
+                            cell.c
+                        );
+
+
+                        drawBoard();
+
+                    }
+
+
+
+                    /* 右鍵 */
+
+                    else if (
+                        event.button === 2
+                    ) {
+
+                        toggleFlag(
+                            cell
+                        );
+
+                    }
+
+                }
+            );
+
+
+
+            /* ==========================================
+               禁止右鍵選單
+               ========================================== */
+
+            canvas.addEventListener(
+                "contextmenu",
+                function(event) {
+
+                    event.preventDefault();
+
+                }
+            );
+
+
+
+            /* ==========================================
+               手機長按
+               ========================================== */
+
+            let longPressTimer =
+                null;
+
+
+            let longPressTriggered =
+                false;
+
+
+
+            canvas.addEventListener(
+                "touchstart",
+                function(event) {
+
+                    if (gameOver) {
+                        return;
+                    }
+
+
+                    event.preventDefault();
+
+
+                    const touch =
+                        event.touches[0];
+
+
+                    longPressTriggered =
+                        false;
+
+
+
+                    /*
+                     * 500 毫秒後視為長按
+                     */
+
+                    longPressTimer =
+                        setTimeout(
+                            function() {
+
+                                const key =
+                                    getCellFromPosition(
+                                        touch.clientX,
+                                        touch.clientY
+                                    );
+
+
+                                if (!key) {
+                                    return;
+                                }
+
+
+                                const cell =
+                                    grid[key];
+
+
+                                /*
+                                 * 長按：
+                                 * 插旗
+                                 */
+
+                                toggleFlag(
+                                    cell
+                                );
+
+
+                                longPressTriggered =
+                                    true;
+
+                            },
+
+                            500
+
+                        );
+
+                },
+
+                {
+                    passive: false
+                }
+
+            );
+
+
+
+            /* ==========================================
+               手機放開
+               ========================================== */
+
+            canvas.addEventListener(
+                "touchend",
+                function(event) {
+
+                    if (gameOver) {
+                        return;
+                    }
+
+
+                    event.preventDefault();
+
+
+                    clearTimeout(
+                        longPressTimer
+                    );
+
+
+                    /*
+                     * 如果剛才已經長按插旗，
+                     * 就不能再執行翻開。
+                     */
+
+                    if (
+                        longPressTriggered
+                    ) {
+
+                        longPressTriggered =
+                            false;
+
+                        return;
+
+                    }
+
+
+                    const touch =
+                        event.changedTouches[0];
+
+
+                    const key =
+                        getCellFromPosition(
+                            touch.clientX,
+                            touch.clientY
+                        );
+
+
+                    if (!key) {
+                        return;
+                    }
+
+
+                    const cell =
+                        grid[key];
+
+
+                    /*
+                     * 短按：
+                     * 翻開
+                     */
+
+                    revealCell(
+                        cell.r,
+                        cell.c
+                    );
+
+
+                    drawBoard();
+
+                },
+
+                {
+                    passive: false
+                }
+
+            );
+
+
+
+            /* ==========================================
+               手機觸控取消
+               ========================================== */
+
+            canvas.addEventListener(
+                "touchcancel",
+                function() {
+
+                    clearTimeout(
+                        longPressTimer
+                    );
+
+                }
+            );
+
+
+
+            /* ==========================================
+               難度按鈕
+               ========================================== */
+
+            document
+                .getElementById("btn-easy")
+                .onclick =
+                () => startGame("easy");
+
+
+            document
+                .getElementById("btn-medium")
+                .onclick =
+                () => startGame("medium");
+
+
+            document
+                .getElementById("btn-hard")
+                .onclick =
+                () => startGame("hard");
+
+
+            document
+                .getElementById("btn-hell")
+                .onclick =
+                () => startGame("hell");
+
+
+            document
+                .getElementById("btn-restart")
+                .onclick =
+                () =>
+                    startGame(
+                        currentDifficulty
+                    );
+
+
+
+            /* ==========================================
+               語言切換
+               ========================================== */
+
+            langSelect.addEventListener(
+                "change",
+                function(event) {
+
+                    currentLang =
+                        event.target.value;
+
+
+                    updateLanguage();
+
+                }
+            );
+
+
+
+            /* ==========================================
+               初始化
+               ========================================== */
+
+            updateLanguage();
+
+            startGame("easy");
+
+        }
+
+    );
+
+</script>
+```
+
+</body>
+
+</html>
